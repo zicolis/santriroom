@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SantriRoom — Monitoring Kamar Santri</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--g:#059669;--gd:#047857;--gl:#d1fae5;--deep:#064e3b;--bg:#f3f6f4;--c:#fff;--t:#10201a;--m:#64748b;--b:#e3e9e6;--izin:#d97706;--sakit:#2563eb;--alpha:#dc2626;--hadir:#059669;--sh:0 1px 2px rgba(16,32,26,.05),0 6px 18px -8px rgba(16,32,26,.12)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--t);font-size:15px;line-height:1.45;padding-bottom:110px}
+#app{max-width:760px;margin:0 auto;padding:14px 16px}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:15px;margin:26px 2px 10px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h3{font-size:15px;font-weight:700}
+.card{background:var(--c);border-radius:20px;padding:16px;margin-bottom:10px;box-shadow:var(--sh)}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.sub{color:var(--m);font-size:13px;line-height:1.45}
+/* hero */
+.hero{background:var(--deep);color:#ecfdf5;border-radius:28px;padding:18px 18px 16px;margin-bottom:12px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-50px;top:-50px;width:170px;height:170px;border-radius:50%;border:30px solid rgba(110,231,183,.08)}
+.hero .room-sel{background:rgba(255,255,255,.12);color:#fff;font-size:15px}
+.hero .room-sel option{color:#10201a}
+.hero .badge-mode{background:rgba(110,231,183,.18);color:#a7f3d0}
+.hero-sub{font-size:13px;color:#a7f3d0;margin:10px 2px 0}
+.hero-big{display:flex;align-items:baseline;gap:10px;margin:14px 2px 12px}
+.hero-big b{font-size:54px;line-height:1;font-weight:800;letter-spacing:-.04em}
+.hero-big span{font-size:14px;color:#a7f3d0;max-width:150px}
+.meter{display:flex;gap:3px;height:10px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.1);margin-bottom:14px}
+.meter i{display:block;min-width:6px}.meter i.hadir{background:#6ee7b7}
+.hero button.wa{background:rgba(255,255,255,.14);color:#fff}
+/* stats */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:600px){.grid{grid-template-columns:repeat(5,1fr)}}
+.stat{background:var(--c);border-radius:18px;padding:12px 14px;box-shadow:var(--sh);text-align:left}
+.stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.stat .sub{font-size:12px;font-weight:600}
+.chip{display:inline-flex;align-items:center;padding:4px 11px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}
+.hadir{background:var(--hadir)}.izin{background:var(--izin)}.sakit{background:var(--sakit)}.alpha{background:var(--alpha)}
+.warn{color:var(--alpha);font-weight:700;font-size:13px}.ok{color:var(--g);font-weight:700;font-size:13px}.soon{color:var(--izin);font-weight:700;font-size:13px}
+.pc{border-left:5px solid var(--e,var(--b))}
+.pc[data-t=izin]{--e:var(--izin)}.pc[data-t=sakit]{--e:var(--sakit)}.pc[data-t=alpha]{--e:var(--alpha)}
+/* buttons & forms */
+button,.btn{font:inherit;border:0;border-radius:14px;padding:11px 16px;background:var(--g);color:#fff;font-weight:700;cursor:pointer;transition:transform .12s,background .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+button:hover,.btn:hover{background:var(--gd)}button:active{transform:scale(.97)}
+button.ghost,.btn.ghost{background:#e7f6ef;color:var(--gd)}button.ghost:hover{background:var(--gl)}
+button.red{background:#fee2e2;color:var(--alpha)}button.red:hover{background:#fecaca}
+button.red-solid{background:var(--alpha);color:#fff}
+button.wa,.btn.wa{background:#25D366;color:#fff}
+button.sm,.btn.sm{padding:7px 12px;font-size:13px;border-radius:11px}
+input,select,textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid transparent;border-radius:14px;background:#eef2f0;margin-bottom:12px;outline:none;transition:border-color .15s,background .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--g);background:#fff}
+label{font-size:12.5px;color:var(--m);display:block;margin:0 0 5px 2px;font-weight:600}
+button:focus-visible,.cell:focus-visible{outline:3px solid #6ee7b7;outline-offset:2px}
+/* nav */
+nav{position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 24px));background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:24px;box-shadow:0 10px 30px -8px rgba(16,32,26,.28);display:flex;justify-content:space-around;padding:6px;z-index:5}
+nav button{background:none;color:var(--m);font-size:10.5px;padding:7px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:700;flex:1;border-radius:18px}
+nav button:hover{background:none;color:var(--t)}
+nav button.on{background:#e7f6ef;color:var(--gd)}
+nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#fab{position:fixed;right:max(16px,calc(50% - 220px));bottom:calc(88px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:20px;font-size:30px;font-weight:500;padding:0 0 3px;box-shadow:0 10px 24px -6px rgba(5,150,105,.6);z-index:6}
+/* sheet */
+#modal{position:fixed;inset:0;background:rgba(6,30,22,.5);backdrop-filter:blur(2px);display:none;align-items:flex-end;justify-content:center;z-index:10}
+#modal.open{display:flex}
+#modal>div{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:28px 28px 0 0;padding:26px 20px 24px;position:relative;animation:up .22s ease-out}
+#modal>div::before{content:"";position:absolute;top:9px;left:50%;width:40px;height:4px;margin-left:-20px;border-radius:9px;background:#d5dcd8}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+@media(min-width:600px){#modal{align-items:center}#modal>div{border-radius:28px}}
+@media(prefers-reduced-motion:reduce){#modal>div{animation:none}button{transition:none}}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;scrollbar-width:none}.chips button{white-space:nowrap}
+/* students */
+.srow{cursor:pointer;flex-wrap:nowrap}.srow>div:nth-child(2){flex:1;min-width:0}
+.av{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:17px;color:#fff;flex:none}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .h{text-align:center;font-size:11.5px;color:var(--m);padding:6px 0;font-weight:700}
+.cell{background:#fff;border-radius:12px;min-height:68px;padding:5px 4px;font-size:11px;cursor:pointer;border:2px solid transparent;overflow:hidden;box-shadow:0 1px 2px rgba(16,32,26,.04)}
+.cell b{font-size:12px}
+.cell.sel{border-color:var(--g)}.cell.td{background:#d1fae5}
+.bar{display:block;color:#fff;border-radius:5px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:700}
+.bar.late{outline:2px solid #111}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--deep);color:#fff;padding:11px 18px;border-radius:99px;display:none;z-index:20;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.empty{text-align:center;color:var(--m);padding:22px;background:transparent;border:1.5px dashed #cdd8d3;border-radius:18px;font-size:14px;margin-bottom:10px}
+.badge-mode{font-size:11px;padding:4px 9px;border-radius:99px;background:#e0f2fe;color:#0369a1;font-weight:700}
+.room-sel{width:auto;margin:0;padding:7px 12px;font-weight:700;font-size:16px;border-radius:12px;background:var(--gl);color:var(--gd);border:0}
+.upload-box{border:2px dashed var(--g);background:#f0fdf4;border-radius:18px;padding:18px;text-align:center;margin-bottom:12px;cursor:pointer}
+.tbl-preview{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+.tbl-preview th,.tbl-preview td{border-bottom:1px solid var(--b);padding:7px 8px;text-align:left}
+.tbl-preview th{background:var(--bg);font-weight:700}
+.danger-zone{border:1px solid #fecaca;background:#fff7f7}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="modal"></div><div id="toast"></div>
+<script>
+// ====================================================================
+// KONFIGURASI DATABASE SUPABASE:
+// Jika SB_URL belum diisi, aplikasi otomatis berjalan dengan Database
+// Lokal (LocalStorage) di perangkat Anda tanpa error.
+// ====================================================================
+const SB_URL = 'https://vsznoxuqjfcczjbymeyo.supabase.co';
+const SB_KEY = 'sb_publishable_u4ieeA-kWJOpMqSo0u7VVA_tkWS_8ze';
+
+const isCloud = SB_URL && !SB_URL.startsWith('YOUR_');
+const sb = isCloud ? supabase.createClient(SB_URL, SB_KEY) : null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const today = () => iso(new Date());
+const diff = (a,b) => Math.round((new Date(a+'T00:00') - new Date(b+'T00:00')) / 864e5);
+const fmt = d => d ? new Date(d+'T00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-';
+const LBL = {hadir:'Hadir',izin:'Izin',sakit:'Sakit',alpha:'Cabut/Alpha'};
+const chip = s => `<span class="chip ${s}">${LBL[s]}</span>`;
+const ic = {
+  home:'<path d="M3 11l9-8 9 8v10H3z"/>',
+  users:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 4a4 4 0 010 8M22 21c0-3-2-5-4-5.6"/>',
+  cal:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v4M16 2v4"/>',
+  hist:'<path d="M3 12a9 9 0 109-9 9 9 0 00-7 3M3 4v4h4M12 7v5l3 2"/>',
+  set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'
+};
+
+let S = {
+  tab:'home', q:'', f:'all', cal:new Date(), sel:today(), hd:'', hn:'',
+  rooms:[], room:null, students:[], periods:[], att:[], logs:[], importBuffer:[]
+};
+let timer;
+
+// ---------- Database Abstraction (Cloud Supabase / LocalStorage) ----------
+const LS_KEY = 'santriroom_db_v1';
+function getLocalDB(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw) return JSON.parse(raw);
+  const defRoom = {id: uid(), name: 'Kamar Abu Bakar', wali_name: 'Ustadz Pembina', created_at: new Date().toISOString()};
+  const db = {rooms:[defRoom], students:[], attendance_records:[], absence_periods:[], activity_logs:[]};
+  localStorage.setItem(LS_KEY, JSON.stringify(db));
+  return db;
+}
+function saveLocalDB(db){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+
+function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._tm); t._tm=setTimeout(()=>t.style.display='none',2600); }
+function modal(h){ $('#modal').innerHTML='<div>'+h+'</div>'; $('#modal').classList.add('open'); }
+function closeM(){ $('#modal').classList.remove('open'); }
+$('#modal').addEventListener('click', e => { if(e.target.id==='modal') closeM(); });
+
+async function q(p){ const r = await p; if(r.error){ toast('Gagal: '+r.error.message); throw r.error; } return r.data; }
+
+// ---------- Inisialisasi Tanpa Login ----------
+async function init(){
+  await loadRooms();
+  if(isCloud){
+    sb.channel('rt').on('postgres_changes',{event:'*',schema:'public'},()=>{
+      clearTimeout(timer); timer=setTimeout(load,400);
+    }).subscribe();
+  }
+  setInterval(render, 60000);
+}
+
+async function loadRooms(){
+  if(isCloud){
+    S.rooms = await q(sb.from('rooms').select('*').order('created_at'));
+    if(!S.rooms.length){
+      const r = await q(sb.from('rooms').insert({name:'Kamar Abu Bakar', wali_name:'Wali Kamar'}).select().single());
+      S.rooms = [r];
+    }
+  } else {
+    const db = getLocalDB();
+    if(!db.rooms.length){
+      db.rooms.push({id: uid(), name: 'Kamar Abu Bakar', wali_name: 'Wali Kamar', created_at: new Date().toISOString()});
+      saveLocalDB(db);
+    }
+    S.rooms = db.rooms;
+  }
+  const savedRid = localStorage.getItem('sr_active_room');
+  S.room = S.rooms.find(r => r.id === savedRid) || S.rooms[0];
+  localStorage.setItem('sr_active_room', S.room.id);
+  await load();
+}
+
+async function switchRoom(rid){
+  if(rid === '__new__'){
+    modal(`<h1>Buat Kamar Baru</h1>
+      <label>Nama Kamar *</label><input id="nr_name" placeholder="Contoh: Kamar Umar bin Khattab">
+      <label>Nama Wali Kamar / Musyrif (Opsional)</label><input id="nr_wali" placeholder="Contoh: Ust. Ahmad">
+      <button style="width:100%" onclick="createRoom()">Buat Kamar</button>`);
+    render();
+    return;
+  }
+  S.room = S.rooms.find(r => r.id === rid) || S.rooms[0];
+  localStorage.setItem('sr_active_room', S.room.id);
+  await load();
+}
+
+async function createRoom(){
+  const name = $('#nr_name').value.trim(), wali_name = $('#nr_wali').value.trim() || null;
+  if(!name) return toast('Nama kamar wajib diisi');
+  let nr;
+  if(isCloud){
+    nr = await q(sb.from('rooms').insert({name, wali_name}).select().single());
+  } else {
+    const db = getLocalDB();
+    nr = {id: uid(), name, wali_name, created_at: new Date().toISOString()};
+    db.rooms.push(nr); saveLocalDB(db);
+  }
+  localStorage.setItem('sr_active_room', nr.id);
+  closeM(); toast('Kamar baru berhasil dibuat'); await loadRooms();
+}
+
+// ---------- FITUR 2: HAPUS KAMAR ----------
+function confirmDelRoom(){
+  const stuCount = S.students.length;
+  modal(`<h1>Hapus Kamar "${esc(S.room.name)}"?</h1>
+    <div class="card danger-zone" style="margin:12px 0">
+      <p style="color:var(--alpha);font-weight:600;margin-bottom:6px">Peringatan Penghapusan Permanen!</p>
+      <p class="sub">Menghapus kamar ini akan menghapus seluruh <b>${stuCount} data santri</b> beserta seluruh riwayat presensi dan perizinan di dalamnya secara permanen.</p>
+    </div>
+    <label>Ketik ulang nama kamar <b>${esc(S.room.name)}</b> untuk konfirmasi:</label>
+    <input id="del_room_confirm" placeholder="${esc(S.room.name)}">
+    <div class="row" style="margin-top:8px">
+      <button class="ghost" style="flex:1" onclick="closeM()">Batal</button>
+      <button class="red-solid" style="flex:1" onclick="execDelRoom()">Hapus Kamar Permanen</button>
+    </div>`);
+}
+
+async function execDelRoom(){
+  const val = $('#del_room_confirm').value.trim();
+  if(val !== S.room.name) return toast('Nama kamar konfirmasi belum sesuai');
+  const rid = S.room.id;
+  if(isCloud){
+    await q(sb.from('rooms').delete().eq('id', rid));
+  } else {
+    const db = getLocalDB();
+    db.rooms = db.rooms.filter(r => r.id !== rid);
+    db.students = db.students.filter(s => s.room_id !== rid);
+    db.attendance_records = db.attendance_records.filter(a => a.room_id !== rid);
+    db.absence_periods = db.absence_periods.filter(p => p.room_id !== rid);
+    db.activity_logs = db.activity_logs.filter(l => l.room_id !== rid);
+    saveLocalDB(db);
+  }
+  localStorage.removeItem('sr_active_room');
+  closeM();
+  toast('Kamar berhasil dihapus');
+  S.tab = 'home';
+  await loadRooms();
+}
+
+async function load(){
+  if(!S.room) return;
+  const rid = S.room.id;
+  if(isCloud){
+    [S.students, S.periods, S.att, S.logs] = await Promise.all([
+      q(sb.from('students').select('*').eq('room_id',rid).order('full_name')),
+      q(sb.from('absence_periods').select('*').eq('room_id',rid).order('start_date',{ascending:false})),
+      q(sb.from('attendance_records').select('*').eq('room_id',rid).eq('date',today())),
+      q(sb.from('activity_logs').select('*').eq('room_id',rid).order('created_at',{ascending:false}).limit(400))
+    ]);
+  } else {
+    const db = getLocalDB();
+    S.rooms = db.rooms;
+    S.room = db.rooms.find(r => r.id === rid) || db.rooms[0];
+    S.students = db.students.filter(x => x.room_id === rid).sort((a,b) => a.full_name.localeCompare(b.full_name));
+    S.periods = db.absence_periods.filter(x => x.room_id === rid).sort((a,b) => b.start_date.localeCompare(a.start_date));
+    S.att = db.attendance_records.filter(x => x.room_id === rid && x.date === today());
+    S.logs = db.activity_logs.filter(x => x.room_id === rid).sort((a,b) => b.created_at.localeCompare(a.created_at)).slice(0,400);
+  }
+  render();
+}
+
+// ---------- Helpers ----------
+const act = () => S.students.filter(s => !s.archived);
+const stu = id => S.students.find(s => s.id === id);
+const open = sid => S.periods.find(p => p.student_id === sid && !p.actual_return);
+const openAll = () => S.periods.filter(p => !p.actual_return && stu(p.student_id) && !stu(p.student_id).archived);
+
+function pstate(p){
+  if(p.actual_return) return ['Sudah kembali '+fmt(p.actual_return),'ok'];
+  if(!p.expected_return) return ['Belum ada jadwal kembali','warn'];
+  const d = diff(p.expected_return, today());
+  if(d < 0) return ['Terlambat '+(-d)+' hari','warn'];
+  if(d === 0) return ['Jadwal kembali hari ini','soon'];
+  if(d === 1) return ['Kembali besok','soon'];
+  return ['Sisa '+d+' hari',''];
+}
+
+function waLink(phone, text=''){
+  if(!phone) return '';
+  let p = String(phone).replace(/[^0-9]/g,'');
+  if(p.startsWith('0')) p = '62' + p.slice(1);
+  return `https://wa.me/${p}${text ? '?text='+encodeURIComponent(text) : ''}`;
+}
+
+async function dbLog(s, action, detail){
+  const item = {id:uid(), room_id:S.room.id, student_id:s?.id||null, action, detail:{name:s?.full_name||'-',...detail}, created_at:new Date().toISOString()};
+  if(isCloud) await sb.from('activity_logs').insert(item);
+  else { const db=getLocalDB(); db.activity_logs.push(item); saveLocalDB(db); }
+}
+
+async function setAtt(s, status){
+  if(isCloud){
+    await q(sb.from('attendance_records').upsert({room_id:S.room.id, student_id:s.id, date:today(), status},{onConflict:'student_id,date'}));
+  } else {
+    const db = getLocalDB();
+    const idx = db.attendance_records.findIndex(a => a.student_id === s.id && a.date === today());
+    if(idx >= 0) db.attendance_records[idx].status = status;
+    else db.attendance_records.push({id:uid(), room_id:S.room.id, student_id:s.id, date:today(), status});
+    saveLocalDB(db);
+  }
+}
+
+async function setStatus(s, status){
+  if(isCloud){
+    await q(sb.from('students').update({status}).eq('id',s.id));
+  } else {
+    const db = getLocalDB();
+    const st = db.students.find(x => x.id === s.id);
+    if(st) st.status = status;
+    saveLocalDB(db);
+  }
+  await setAtt(s, status);
+}
+
+// ---------- Views ----------
+function render(){
+  if(!S.room) return;
+  const activeEl = document.activeElement;
+  const isSearchFocused = activeEl && activeEl.id === 'search_input';
+  const cursorPos = isSearchFocused ? activeEl.selectionStart : null;
+
+  const v = {home, list, calv, hist, setv}[S.tab]();
+  $('#app').innerHTML = v;
+
+  if(isSearchFocused){
+    const inp = $('#search_input');
+    if(inp){ inp.focus(); inp.setSelectionRange(cursorPos, cursorPos); }
+  }
+
+  const tabs = [['home','Beranda','home'],['list','Santri','users'],['calv','Kalender','cal'],['hist','Riwayat','hist'],['setv','Pengaturan','set']];
+  document.querySelectorAll('nav,#fab').forEach(e => e.remove());
+  document.body.insertAdjacentHTML('beforeend',
+    `<button id="fab" title="Catat Presensi" onclick="statusForm()">+</button>
+     <nav>${tabs.map(t=>`<button class="${S.tab===t[0]?'on':''}" onclick="S.tab='${t[0]}';render()"><svg viewBox="0 0 24 24">${ic[t[2]]}</svg>${t[1]}</button>`).join('')}</nav>`
+  );
+}
+
+function pcard(p, btn=true){
+  const s = stu(p.student_id);
+  if(!s) return '';
+  const [t,c] = pstate(p);
+  const waMsg = `Assalamu'alaikum Bapak/Ibu wali dari *${s.full_name}* (${S.room.name}). Kami mengonfirmasi status ananda saat ini *${LBL[p.type]}* sejak ${fmt(p.start_date)}${p.expected_return ? ' dengan jadwal kembali '+fmt(p.expected_return) : ''}.`;
+  return `<div class="card pc" data-t="${p.type}">
+    <div class="row"><h3>${esc(s.full_name)}</h3>${chip(p.type)}</div>
+    <p class="sub" style="margin-top:4px"><b>Alasan:</b> ${esc(p.reason||'-')}${p.detail?' — '+esc(p.detail):''}</p>
+    <p class="sub">${fmt(p.start_date)} → ${fmt(p.expected_return)}</p>
+    <div class="row" style="margin-top:8px">
+      <span class="${c}">${t}</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${s.parent_phone ? `<a class="btn sm wa" target="_blank" href="${waLink(s.parent_phone, waMsg)}">WA Wali</a>` : ''}
+        ${btn && !p.actual_return ? `<button class="sm ghost" onclick="editPeriodForm('${p.id}')">Perpanjang/Edit</button><button class="sm" onclick="retForm('${p.id}')">Sudah Kembali</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function home(){
+  const A = act(), n = s => A.filter(x => x.status === s).length, P = openAll(), t = today();
+  const pend = A.filter(s => !S.att.find(a => a.student_id === s.id) && !open(s.id));
+  const end = P.filter(p => p.expected_return === t);
+  const late = P.filter(p => p.expected_return && p.expected_return < t);
+  const sec = (h,l) => `<h2>${h} (${l.length})</h2>${l.length ? l.map(p => pcard(p)).join('') : '<div class="empty">Tidak ada data.</div>'}`;
+
+  return `
+  <div class="hero">
+    <div style="display:flex;align-items:center;gap:8px">
+        <select class="room-sel" onchange="switchRoom(this.value)">
+          ${S.rooms.map(r => `<option value="${r.id}" ${r.id===S.room.id?'selected':''}>${esc(r.name)}</option>`).join('')}
+          <option value="__new__">+ Buat Kamar Baru...</option>
+        </select>
+        <span class="badge-mode">${isCloud ? 'Cloud Aktif' : 'Mode Lokal'}</span>
+      </div>
+    <p class="hero-sub">${S.room.wali_name ? esc(S.room.wali_name)+' · ' : ''}${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+    <div class="hero-big"><b>${n('hadir')}</b><span>dari ${A.length} santri hadir hari ini</span></div>
+    <div class="meter">${['hadir','izin','sakit','alpha'].map(k=>n(k)?`<i class="${k}" style="flex:${n(k)}"></i>`:'').join('')}</div>
+    <button class="sm wa" onclick="copyWaReport()">Salin Rekap WA</button>
+  </div>
+
+  <div class="grid">
+    <div class="stat"><b>${A.length}</b><span class="sub">Total Santri</span></div>
+    <div class="stat"><b style="color:var(--hadir)">${n('hadir')}</b><span class="sub">Hadir</span></div>
+    <div class="stat"><b style="color:var(--izin)">${n('izin')}</b><span class="sub">Izin</span></div>
+    <div class="stat"><b style="color:var(--sakit)">${n('sakit')}</b><span class="sub">Sakit</span></div>
+    <div class="stat"><b style="color:var(--alpha)">${n('alpha')}</b><span class="sub">Cabut/Alpha</span></div>
+  </div>
+
+  <h2>Belum Dikonfirmasi Hari Ini (${pend.length})</h2>
+  ${pend.length ? `<div class="card">
+    ${pend.map(s => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--b)">
+      <span><b>${esc(s.full_name)}</b></span>
+      <div style="display:flex;gap:6px">
+        <button class="sm" onclick="quickHadir('${s.id}')">Hadir</button>
+        <button class="sm ghost" onclick="statusForm('${s.id}')">Izin/Sakit</button>
+      </div>
+    </div>`).join('')}
+    <button style="width:100%;margin-top:10px" onclick="allPresent()">Tandai Semua Hadir (${pend.length} Santri)</button>
+  </div>` : '<div class="empty">Semua santri sudah dikonfirmasi hari ini.</div>'}
+
+  ${sec('Melewati Batas Kembali / Terlambat', late)}
+  ${sec('Jadwal Kembali Hari Ini', end)}
+  ${sec('Sedang di Luar Kamar (Izin / Sakit / Alpha)', P)}`;
+}
+
+async function quickHadir(sid){
+  const s = stu(sid); if(!s) return;
+  await setStatus(s, 'hadir');
+  await dbLog(s, 'status', {status:'hadir', via:'cepat'});
+  toast(s.full_name + ' ditandai hadir');
+  load();
+}
+
+async function allPresent(){
+  const pend = act().filter(s => !S.att.find(a => a.student_id === s.id) && !open(s.id));
+  for(const s of pend){
+    await setStatus(s, 'hadir');
+    await dbLog(s, 'status', {status:'hadir', via:'massal'});
+  }
+  toast('Semua ditandai hadir'); load();
+}
+
+function copyWaReport(){
+  const A = act(), n = s => A.filter(x => x.status === s).length, P = openAll();
+  const tgl = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let txt = `*LAPORAN PRESENSI KAMAR*\n*${S.room.name.toUpperCase()}*\n📅 ${tgl}\n`;
+  if(S.room.wali_name) txt += `👤 Wali Kamar: ${S.room.wali_name}\n`;
+  txt += `\n*Ringkasan Kehadiran:*\n• Total Santri: ${A.length}\n• Hadir di Kamar: ${n('hadir')}\n• Izin: ${n('izin')}\n• Sakit: ${n('sakit')}\n• Alpha: ${n('alpha')}\n`;
+
+  if(P.length){
+    txt += `\n*Daftar Santri Tidak di Kamar (${P.length}):*\n`;
+    P.forEach((p,i) => {
+      const s = stu(p.student_id);
+      const [stTxt] = pstate(p);
+      txt += `${i+1}. *${s.full_name}* [${LBL[p.type]}]\n   Alasan: ${p.reason||'-'}\n   Kembali: ${fmt(p.expected_return)} (${stTxt})\n`;
+    });
+  } else {
+    txt += `\n_Alhamdulillah seluruh santri lengkap berada di kamar._`;
+  }
+  navigator.clipboard.writeText(txt).then(() => toast('Laporan WA berhasil disalin! Siap ditempel di grup.'));
+}
+
+function list(){
+  const A = act().filter(s => (s.full_name.toLowerCase().includes(S.q.toLowerCase()) || (s.nis||'').toLowerCase().includes(S.q.toLowerCase())) && (S.f==='all' || s.status===S.f));
+  return `<div class="row">
+    <h1>Daftar Santri (${act().length})</h1>
+    <div style="display:flex;gap:6px">
+      <button class="ghost sm" onclick="excelModal()">Upload Excel</button>
+      <button class="sm" onclick="stuForm()">+ Tambah</button>
+    </div>
+  </div>
+  <input id="search_input" style="margin-top:12px" placeholder="Cari nama atau nomor induk…" value="${esc(S.q)}" oninput="S.q=this.value;render()">
+  <div class="chips">${['all','hadir','izin','sakit','alpha'].map(f=>`<button class="sm ${S.f===f?'':'ghost'}" onclick="S.f='${f}';render()">${f==='all'?'Semua':LBL[f]}</button>`).join('')}</div>
+  ${A.length ? A.map(s => `<div class="card row srow" onclick="detail('${s.id}')"><div class="av ${s.status}">${esc(s.full_name.trim().charAt(0).toUpperCase())}</div>
+    <div>
+      <h3>${esc(s.full_name)}</h3>
+      <p class="sub">${esc(s.nis||'Tanpa NIS')}${s.parent_phone ? ' · 📞 '+esc(s.parent_phone) : ''}</p>
+    </div>
+    ${chip(s.status)}
+  </div>`).join('') : '<div class="empty">Belum ada santri. Klik <b>+ Tambah</b> atau <b>Upload Excel</b> untuk memasukkan data.</div>'}`;
+}
+
+// ---------- FITUR 1: UPLOAD DATA SANTRI DARI EXCEL (.XLSX / .CSV) ----------
+function excelModal(){
+  S.importBuffer = [];
+  modal(`<h1>Import Data Santri (Excel / CSV)</h1>
+    <p class="sub" style="margin:6px 0 12px">Unggah file Excel (<b>.xlsx / .xls / .csv</b>) atau unduh template terlebih dahulu. Kolom yang dikenali otomatis: <b>Nama</b>, <b>NIS</b>, <b>No HP Wali</b>, dan <b>Catatan</b>.</p>
+    <div class="row" style="margin-bottom:12px">
+      <button class="ghost sm" onclick="downloadTemplateExcel()">Unduh Template Excel</button>
+    </div>
+    <div class="upload-box" onclick="document.getElementById('excel_file').click()">
+      <b style="color:var(--gd)">Klik untuk Pilih File Excel (.xlsx / .csv)</b>
+      <p class="sub" style="margin-top:4px">Atau tarik file ke sini</p>
+      <input id="excel_file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelFile(this.files[0])">
+    </div>
+    <label>Atau Copy-Paste Cepat Daftar Nama (Satu nama per baris):</label>
+    <textarea id="paste_names" rows="3" placeholder="Muhammad Farhan&#10;Ahmad Zaki&#10;Rizky Ramadhan" oninput="parsePasteNames(this.value)"></textarea>
+    <div id="excel_preview"></div>
+    <button id="btn_import_save" style="width:100%;margin-top:8px;display:none" onclick="saveImportedStudents()">Simpan ke Kamar ${esc(S.room.name)}</button>`);
+}
+
+function downloadTemplateExcel(){
+  const wsData = [
+    ['Nama Lengkap', 'NIS', 'No HP Wali', 'Catatan'],
+    ['Muhammad Farhan', '2026001', '081234567890', 'Alergi udang'],
+    ['Ahmad Zaki', '2026002', '081398765432', '']
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Data_Santri');
+  XLSX.writeFile(wb, 'Template_Import_SantriRoom.xlsx');
+}
+
+function handleExcelFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const firstSheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, {defval:''});
+      const parsed = [];
+      rows.forEach(r => {
+        const keys = Object.keys(r);
+        const findVal = patterns => {
+          const k = keys.find(key => patterns.some(p => key.toLowerCase().includes(p)));
+          return k ? String(r[k]).trim() : '';
+        };
+        const full_name = findVal(['nama','name','santri','siswa']) || String(r[keys[0]]||'').trim();
+        const nis = findVal(['nis','induk','nomor induk','no induk']);
+        const parent_phone = findVal(['hp','wa','whatsapp','telp','telepon','wali','ortu','phone']);
+        const notes = findVal(['catatan','ket','keterangan','note']);
+        if(full_name && full_name.toLowerCase() !== 'nama lengkap'){
+          parsed.push({full_name, nis: nis||null, parent_phone: parent_phone||null, notes: notes||null});
+        }
+      });
+      S.importBuffer = parsed;
+      renderExcelPreview();
+    } catch(err){
+      toast('Gagal membaca file Excel: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parsePasteNames(text){
+  const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  S.importBuffer = lines.map(line => {
+    const parts = line.split(/\t|;/);
+    return {
+      full_name: parts[0]?.trim() || '',
+      nis: parts[1]?.trim() || null,
+      parent_phone: parts[2]?.trim() || null,
+      notes: parts[3]?.trim() || null
+    };
+  }).filter(x => x.full_name);
+  renderExcelPreview();
+}
+
+function renderExcelPreview(){
+  const box = $('#excel_preview'), btn = $('#btn_import_save');
+  if(!S.importBuffer.length){
+    box.innerHTML = '<p class="sub">Tidak ada data valid yang terbaca.</p>';
+    btn.style.display = 'none';
+    return;
+  }
+  box.innerHTML = `<p class="ok" style="margin:6px 0">Terbaca ${S.importBuffer.length} data santri siap diimport:</p>
+    <div style="max-height:180px;overflow:auto">
+      <table class="tbl-preview">
+        <thead><tr><th>#</th><th>Nama Lengkap</th><th>NIS</th><th>HP Wali</th></tr></thead>
+        <tbody>${S.importBuffer.slice(0,50).map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.full_name)}</td><td>${esc(s.nis||'-')}</td><td>${esc(s.parent_phone||'-')}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  btn.style.display = 'inline-flex';
+  btn.textContent = `Import ${S.importBuffer.length} Santri ke ${S.room.name}`;
+}
+
+async function saveImportedStudents(){
+  if(!S.importBuffer.length) return;
+  const items = S.importBuffer.map(s => ({
+    full_name: s.full_name,
+    nis: s.nis,
+    parent_phone: s.parent_phone,
+    notes: s.notes,
+    room_id: S.room.id,
+    status: 'hadir',
+    archived: false
+  }));
+  if(isCloud){
+    await q(sb.from('students').insert(items));
+  } else {
+    const db = getLocalDB();
+    items.forEach(it => db.students.push({id:uid(), created_at:new Date().toISOString(), ...it}));
+    saveLocalDB(db);
+  }
+  await dbLog({full_name:`Import Massal (${items.length} santri)`}, 'tambah', {count:items.length});
+  closeM();
+  toast(`${items.length} santri berhasil ditambahkan!`);
+  load();
+}
+
+// ---------- DETAIL & FITUR 3: HAPUS NAMA SANTRI ----------
+function detail(id){
+  const s = stu(id), P = S.periods.filter(p => p.student_id === id);
+  modal(`<div class="row"><h1>${esc(s.full_name)}</h1>${chip(s.status)}</div>
+  <p class="sub" style="margin-top:4px">No. Induk: <b>${esc(s.nis||'-')}</b> · Kamar: <b>${esc(S.room.name)}</b></p>
+  <p class="sub">No. HP Wali: <b>${esc(s.parent_phone||'-')}</b></p>
+  ${s.notes ? `<p class="card" style="background:var(--bg);margin-top:8px;font-size:13px">${esc(s.notes)}</p>` : ''}
+  <div class="row" style="margin:12px 0;gap:6px">
+    <button style="flex:1" onclick="statusForm('${id}')">Ubah Status</button>
+    ${s.parent_phone ? `<a class="btn wa" target="_blank" href="${waLink(s.parent_phone)}">WA Wali</a>` : ''}
+    <button class="ghost" onclick="stuForm('${id}')">Edit</button>
+    <button class="ghost" onclick="archive('${id}',1)">Arsip</button>
+    <button class="red" onclick="delStudent('${id}')">Hapus</button>
+  </div>
+  <h2>Riwayat Izin / Sakit / Alpha (${P.length})</h2>
+  ${P.length ? P.map(p => `<div class="card">
+    <div class="row">${chip(p.type)} <span class="sub">${fmt(p.start_date)} → ${fmt(p.actual_return||p.expected_return)}</span></div>
+    <p class="sub" style="margin:4px 0">${esc(p.reason||'-')}${p.detail?' — '+esc(p.detail):''}</p>
+    <span class="${pstate(p)[1]}">${pstate(p)[0]}</span>
+  </div>`).join('') : '<div class="empty">Belum pernah izin/sakit/alpha.</div>'}`);
+}
+
+async function delStudent(id){
+  const s = stu(id);
+  if(!s) return;
+  if(!confirm(`Hapus permanen data santri "${s.full_name}" beserta seluruh riwayat kehadirannya?`)) return;
+  if(isCloud){
+    await q(sb.from('students').delete().eq('id', id));
+  } else {
+    const db = getLocalDB();
+    db.students = db.students.filter(x => x.id !== id);
+    db.attendance_records = db.attendance_records.filter(x => x.student_id !== id);
+    db.absence_periods = db.absence_periods.filter(x => x.student_id !== id);
+    saveLocalDB(db);
+  }
+  await dbLog(s, 'hapus', {});
+  closeM();
+  toast(`Santri ${s.full_name} dihapus permanen`);
+  load();
+}
+
+function stuForm(id){
+  const s = id ? stu(id) : {};
+  modal(`<h1>${id?'Edit':'Tambah'} Santri</h1>
+    <label>Nama Lengkap *</label><input id="fn" value="${esc(s.full_name)}" placeholder="Contoh: Muhammad Farhan">
+    <label>Nomor Induk / NIS (Opsional)</label><input id="fi" value="${esc(s.nis)}" placeholder="Contoh: 2026001">
+    <label>No. WhatsApp Wali / Orang Tua (Opsional)</label><input id="fp" type="tel" value="${esc(s.parent_phone)}" placeholder="Contoh: 081234567890">
+    <label>Catatan Khusus (Alergi, Riwayat Medis, dll)</label><textarea id="fo" rows="2">${esc(s.notes)}</textarea>
+    <button style="width:100%" onclick="saveStu('${id||''}')">Simpan Data Santri</button>`);
+}
+
+async function saveStu(id){
+  const o = {
+    full_name: $('#fn').value.trim(),
+    nis: $('#fi').value.trim() || null,
+    parent_phone: $('#fp').value.trim() || null,
+    notes: $('#fo').value.trim() || null
+  };
+  if(!o.full_name) return toast('Nama santri wajib diisi');
+  if(id){
+    if(isCloud) await q(sb.from('students').update(o).eq('id',id));
+    else { const db=getLocalDB(); Object.assign(db.students.find(x=>x.id===id), o); saveLocalDB(db); }
+    await dbLog(stu(id), 'edit', {});
+  } else {
+    let r;
+    if(isCloud){
+      r = await q(sb.from('students').insert({...o, room_id:S.room.id}).select().single());
+    } else {
+      const db = getLocalDB();
+      r = {id:uid(), room_id:S.room.id, status:'hadir', archived:false, created_at:new Date().toISOString(), ...o};
+      db.students.push(r); saveLocalDB(db);
+    }
+    await dbLog(r, 'tambah', {});
+  }
+  closeM(); toast('Data santri disimpan'); load();
+}
+
+async function archive(id, v){
+  if(isCloud) await q(sb.from('students').update({archived:!!v}).eq('id',id));
+  else { const db=getLocalDB(); db.students.find(x=>x.id===id).archived = !!v; saveLocalDB(db); }
+  await dbLog(stu(id), v?'arsip':'pulihkan', {});
+  closeM(); toast(v?'Santri diarsipkan':'Santri dipulihkan'); load();
+}
+
+function statusForm(id){
+  const A = act();
+  if(!A.length) return toast('Tambahkan data santri terlebih dahulu');
+  modal(`<h1>Catat Presensi / Perizinan</h1>
+    <label>Pilih Santri</label>
+    <select id="sid">${A.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>
+    <label>Status Kehadiran</label>
+    <select id="st" onchange="document.getElementById('ex').style.display=this.value==='hadir'?'none':'block'">
+      <option value="hadir">Hadir di Kamar</option>
+      <option value="izin">Izin Pulang / Keluar</option>
+      <option value="sakit">Sakit (UKS / RS / Pulang)</option>
+      <option value="alpha">Cabut / Alpha</option>
+    </select>
+    <div id="ex" style="display:none">
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div><label>Tanggal Mulai</label><input id="sd" type="date" value="${today()}"></div>
+        <div><label>Batas Kembali</label><input id="ed" type="date"></div>
+      </div>
+      <label>Alasan Singkat</label><input id="rs" placeholder="Contoh: Acara keluarga / Demam tinggi">
+      <label>Keterangan / Dijemput Oleh</label><textarea id="dt" rows="2" placeholder="Contoh: Dijemput ayah kandung pukul 14.00"></textarea>
+    </div>
+    <button style="width:100%" onclick="saveSt()">Simpan Status</button>`);
+}
+
+async function saveSt(){
+  const s = stu($('#sid').value), st = $('#st').value;
+  if(!s) return;
+  const prev = open(s.id);
+  if(st === 'hadir'){
+    if(prev){
+      if(isCloud) await q(sb.from('absence_periods').update({actual_return:today()}).eq('id',prev.id));
+      else { const db=getLocalDB(); db.absence_periods.find(x=>x.id===prev.id).actual_return=today(); saveLocalDB(db); }
+    }
+  } else {
+    const sd = $('#sd').value, ed = $('#ed').value || null;
+    if(!sd) return toast('Tanggal mulai wajib diisi');
+    if(ed && ed < sd) return toast('Batas kembali tidak boleh sebelum tanggal mulai');
+    if(prev) return toast('Santri masih memiliki izin/sakit aktif. Klik Perpanjang/Edit atau Sudah Kembali.');
+    const item = {
+      id:uid(), room_id:S.room.id, student_id:s.id, type:st,
+      start_date:sd, expected_return:ed, actual_return:null,
+      reason:$('#rs').value.trim()||null, detail:$('#dt').value.trim()||null, created_at:new Date().toISOString()
+    };
+    if(isCloud) await q(sb.from('absence_periods').insert(item));
+    else { const db=getLocalDB(); db.absence_periods.push(item); saveLocalDB(db); }
+  }
+  const from = s.status;
+  await setStatus(s, st);
+  await dbLog(s, 'status', {status:st, from, reason:$('#rs')?.value||''});
+  closeM(); toast('Status berhasil disimpan'); load();
+}
+
+// ---------- FITUR BONUS: PERPANJANG / EDIT IZIN AKTIF ----------
+function editPeriodForm(pid){
+  const p = S.periods.find(x => x.id === pid), s = stu(p.student_id);
+  modal(`<h1>Perpanjang / Edit Izin</h1>
+    <p class="sub" style="margin-bottom:10px">Santri: <b>${esc(s.full_name)}</b> (${LBL[p.type]})</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div><label>Tanggal Mulai</label><input id="ep_sd" type="date" value="${p.start_date}"></div>
+      <div><label>Batas Kembali Baru</label><input id="ep_ed" type="date" value="${p.expected_return||''}"></div>
+    </div>
+    <label>Alasan</label><input id="ep_rs" value="${esc(p.reason||'')}">
+    <label>Keterangan / Catatan Perpanjangan</label><textarea id="ep_dt" rows="2">${esc(p.detail||'')}</textarea>
+    <button style="width:100%" onclick="saveEditPeriod('${pid}')">Simpan Perubahan Izin</button>`);
+}
+
+async function saveEditPeriod(pid){
+  const p = S.periods.find(x => x.id === pid), s = stu(p.student_id);
+  const start_date = $('#ep_sd').value, expected_return = $('#ep_ed').value || null;
+  const reason = $('#ep_rs').value.trim() || null, detail = $('#ep_dt').value.trim() || null;
+  if(expected_return && expected_return < start_date) return toast('Batas kembali tidak valid');
+  if(isCloud){
+    await q(sb.from('absence_periods').update({start_date, expected_return, reason, detail}).eq('id', pid));
+  } else {
+    const db = getLocalDB();
+    Object.assign(db.absence_periods.find(x => x.id === pid), {start_date, expected_return, reason, detail});
+    saveLocalDB(db);
+  }
+  await dbLog(s, 'perpanjang', {expected_return, reason});
+  closeM(); toast('Data perizinan diperbarui'); load();
+}
+
+function retForm(pid){
+  modal(`<h1>Konfirmasi Kepulangan Santri</h1>
+    <label>Tanggal Kembali Aktual</label>
+    <input id="rd" type="date" value="${today()}">
+    <button style="width:100%" onclick="saveRet('${pid}')">Konfirmasi Sudah Kembali ke Kamar</button>`);
+}
+
+async function saveRet(pid){
+  const p = S.periods.find(x => x.id === pid), s = stu(p.student_id), d = $('#rd').value;
+  if(isCloud) await q(sb.from('absence_periods').update({actual_return:d}).eq('id',pid));
+  else { const db=getLocalDB(); db.absence_periods.find(x=>x.id===pid).actual_return=d; saveLocalDB(db); }
+  await setStatus(s, 'hadir');
+  await dbLog(s, 'kembali', {status:'hadir', date:d, type:p.type});
+  closeM(); toast('Kepulangan santri dikonfirmasi'); load();
+}
+
+function calv(){
+  const c = S.cal, y = c.getFullYear(), m = c.getMonth(), first = new Date(y,m,1).getDay(), days = new Date(y,m+1,0).getDate(), t = today();
+  const cover = d => S.periods.filter(p => stu(p.student_id) && p.start_date <= d && d <= (p.actual_return || (p.expected_return && p.expected_return > t ? p.expected_return : t)));
+  let cells = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(x => `<div class="h">${x}</div>`).join('') + '<div></div>'.repeat(first);
+  for(let d=1; d<=days; d++){
+    const ds = iso(new Date(y,m,d)), L = cover(ds);
+    cells += `<div class="cell ${ds===t?'td':''} ${S.sel===ds?'sel':''}" onclick="S.sel='${ds}';render()">
+      <b>${d}</b>
+      ${L.slice(0,2).map(p => `<span class="bar ${p.type} ${!p.actual_return && p.expected_return && p.expected_return < ds ? 'late' : ''}">${esc(stu(p.student_id).full_name.split(' ')[0])}</span>`).join('')}
+      ${L.length > 2 ? `<span class="sub">+${L.length-2}</span>` : ''}
+    </div>`;
+  }
+  const sel = S.sel ? cover(S.sel) : [];
+  return `<div class="row">
+    <button class="ghost" onclick="S.cal=new Date(${y},${m-1},1);render()">‹</button>
+    <h1>${c.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h1>
+    <button class="ghost" onclick="S.cal=new Date(${y},${m+1},1);render()">›</button>
+  </div>
+  <p class="sub" style="margin:8px 0">Ket: <span class="chip izin">Izin</span> <span class="chip sakit">Sakit</span> <span class="chip alpha">Alpha</span> · Garis tepi hitam = Terlambat kembali</p>
+  <div class="cal">${cells}</div>
+  ${S.sel ? `<h2>Detail Tanggal ${fmt(S.sel)} (${sel.length})</h2>${sel.length ? sel.map(p => pcard(p)).join('') : '<div class="empty">Tidak ada santri izin/sakit/alpha pada tanggal ini.</div>'}` : ''}`;
+}
+
+function hist(){
+  const L = S.logs.filter(l => (!S.hd || iso(new Date(l.created_at))===S.hd) && (!S.hn || (l.detail.name||'').toLowerCase().includes(S.hn.toLowerCase())));
+  const txt = l => {
+    const d = l.detail;
+    return l.action === 'status'
+      ? `${chip(d.status)} ${d.from && d.from!==d.status ? '<span class="sub">dari '+LBL[d.from]+'</span>' : ''} ${esc(d.reason||'')}`
+      : l.action === 'kembali'
+      ? `<span class="ok">Sudah kembali ke kamar</span> <span class="sub">(${fmt(d.date)})</span>`
+      : l.action === 'perpanjang'
+      ? `<span class="soon">Perpanjangan/Edit Izin</span> <span class="sub">→ ${fmt(d.expected_return)}</span>`
+      : `<span class="sub">${{tambah:'Santri ditambahkan',edit:'Profil santri diperbarui',arsip:'Santri diarsipkan',pulihkan:'Santri dipulihkan',hapus:'Santri dihapus permanen'}[l.action]||l.action}</span>`;
+  };
+  return `<h1>Riwayat Aktivitas</h1>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin:12px 0">
+    <input type="date" value="${S.hd}" onchange="S.hd=this.value;render()">
+    <input placeholder="Filter nama santri…" value="${esc(S.hn)}" oninput="S.hn=this.value;render()">
+  </div>
+  ${L.length ? L.map(l => `<div class="card">
+    <div class="row"><b>${esc(l.detail.name||'-')}</b><span class="sub">${new Date(l.created_at).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>
+    <div style="margin-top:4px">${txt(l)}</div>
+  </div>`).join('') : '<div class="empty">Belum ada riwayat aktivitas.</div>'}`;
+}
+
+function setv(){
+  const AR = S.students.filter(s => s.archived);
+  return `<h1>Pengaturan Kamar</h1>
+  <div class="card">
+    <label>Nama Kamar</label><input id="rnm" value="${esc(S.room.name)}">
+    <label>Nama Wali Kamar / Musyrif</label><input id="rwl" value="${esc(S.room.wali_name||'')}" placeholder="Contoh: Ust. Abdullah">
+    <button onclick="renRoom()">Simpan Perubahan Kamar</button>
+  </div>
+
+  <h2>Import & Ekspor Data</h2>
+  <div class="card">
+    <p class="sub" style="margin-bottom:10px">Kelola data santri menggunakan file Excel (.xlsx / .csv) atau simpan cadangan.</p>
+    <div class="row" style="justify-content:flex-start;gap:8px">
+      <button class="sm" onclick="excelModal()">Upload Excel Santri</button>
+      <button class="ghost sm" onclick="exportExcel()">Unduh Rekap Excel (.xlsx)</button>
+      ${!isCloud ? `<button class="ghost sm" onclick="backupJSON()">Backup JSON</button>` : ''}
+    </div>
+  </div>
+
+  <h2>Santri Diarsipkan (${AR.length})</h2>
+  ${AR.length ? AR.map(s => `<div class="card row">
+    <span>${esc(s.full_name)}</span>
+    <div style="display:flex;gap:6px">
+      <button class="sm ghost" onclick="archive('${s.id}',0)">Pulihkan</button>
+      <button class="sm red" onclick="delStudent('${s.id}')">Hapus Permanen</button>
+    </div>
+  </div>`).join('') : '<div class="empty">Tidak ada santri yang diarsipkan.</div>'}
+
+  <h2>Zona Berbahaya</h2>
+  <div class="card danger-zone">
+    <h3>Hapus Kamar "${esc(S.room.name)}"</h3>
+    <p class="sub" style="margin:4px 0 10px">Menghapus kamar ini beserta seluruh data santri dan riwayat di dalamnya secara permanen.</p>
+    <button class="red" onclick="confirmDelRoom()">Hapus Kamar Ini</button>
+  </div>`;
+}
+
+async function renRoom(){
+  const name = $('#rnm').value.trim(), wali_name = $('#rwl').value.trim() || null;
+  if(!name) return toast('Nama kamar tidak boleh kosong');
+  if(isCloud){
+    await q(sb.from('rooms').update({name, wali_name}).eq('id',S.room.id));
+  } else {
+    const db = getLocalDB();
+    const r = db.rooms.find(x => x.id === S.room.id);
+    if(r){ r.name = name; r.wali_name = wali_name; }
+    saveLocalDB(db);
+  }
+  S.room.name = name; S.room.wali_name = wali_name;
+  toast('Pengaturan kamar disimpan'); render();
+}
+
+function exportExcel(){
+  const rows = act().map((s,i) => ({
+    'No': i+1,
+    'Nama Lengkap': s.full_name,
+    'NIS': s.nis || '',
+    'Status Saat Ini': LBL[s.status],
+    'No HP Wali': s.parent_phone || '',
+    'Catatan': s.notes || ''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Santri');
+  XLSX.writeFile(wb, `Rekap_${S.room.name.replace(/\s+/g,'_')}_${today()}.xlsx`);
+}
+
+function backupJSON(){
+  const blob = new Blob([localStorage.getItem(LS_KEY)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Backup_SantriRoom_${today()}.json`;
+  a.click();
+}
+
+init();
+</script>
+</body>
+</html>
